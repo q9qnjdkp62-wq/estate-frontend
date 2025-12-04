@@ -38,24 +38,40 @@
 
         async function sendMessage() {
             if (!input) return;
+            
             const userMsg = input;
+
+    
             setMessages(prev => [...prev, { role: "user", text: userMsg }]);
             setInput("");
             setLoading(true);
 
-            try {
-                const response = await fetch(`${BACKEND_URL}/chat`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: userMsg })
-                });
-                const data = await response.json();
-                setMessages(prev => [...prev, { role: "agent", text: data.reply }]);
-            } catch (error) {
-                setMessages(prev => [...prev, { role: "agent", text: "Error: Could not connect to the server. (Did you update the BACKEND_URL?)" }]);
-            }
-            setLoading(false);
-        }
+        try {
+        // --- NEW CODE START ---
+        // We join all previous messages into a single text block.
+        // Note: 'messages' here contains the history BEFORE the current userMsg.
+            const historyText = messages.map(m => `${m.role}: ${m.text}`).join("\n");
+        // --- NEW CODE END ---
+
+            const response = await fetch(`${BACKEND_URL}/chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    message: userMsg,      // The new prompt
+                    history: historyText   // The context string
+            })
+        });
+
+            const data = await response.json();
+            setMessages(prev => [...prev, { role: "agent", text: data.reply }]);
+
+    }     catch (error) {
+            console.error("Fetch error:", error);
+            setMessages(prev => [...prev, { role: "agent", text: "Error: Could not connect to the server." }]);
+    }
+    
+        setLoading(false);
+}
 
         return (
             <div className="chat-container">
